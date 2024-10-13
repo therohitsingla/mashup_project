@@ -1,4 +1,2 @@
-ytdlp
-moviepy
-pydub
-ffmpeg-python
+Flask
+yt-dlp
