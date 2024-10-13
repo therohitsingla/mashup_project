@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mashup Form</title>
-    <link rel="stylesheet" href="static/styles.css"> <!-- Link to the external CSS file -->
+    <link rel="stylesheet" href="/static/styles.css"> <!-- Link to the external CSS file -->
     <script>
         function toggleLogs() {
             const logsDiv = document.getElementById('logs');
@@ -39,6 +39,11 @@
             <button type="button" onclick="toggleLogs()">Logs</button>
         </form>
 
+        {% if mashup_filename %}
+        <h2>Mashup created successfully!</h2>
+        <a href="{{ url_for('download_file', filename=mashup_filename) }}">Download your mashup</a>
+        {% endif %}
+        
         <div id="logs" class="logs"></div>
     </div>
 </body>
