@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mashup Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="number"],
+        input[type="email"] {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="submit"],
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        input[type="submit"]:hover,
+        button:hover {
+            background-color: #45a049;
+        }
+        .logs {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #e7f3fe; /* Light blue background */
+            border-left: 6px solid #2196F3; /* Blue left border */
+            display: none; /* Hidden by default */
+        }
+    </style>
+    <script>
+        function toggleLogs() {
+            const logsDiv = document.getElementById('logs');
+            if (logsDiv.style.display === 'none' || logsDiv.style.display === '') {
+                logsDiv.style.display = 'block';
+                logsDiv.innerHTML = 'Logs window opened. Tracking messages will appear here.';
+                // Add more logging functionality as needed
+            } else {
+                logsDiv.style.display = 'none';
+                logsDiv.innerHTML = '';
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1>Create Mashup File</h1>
+        <form>
+            <label for="singer-name">Singer Name:</label>
+            <input type="text" id="singer-name" name="singer-name" required>
+
+            <label for="num-videos">Number of Videos (in range 10-50):</label>
+            <input type="number" id="num-videos" name="num-videos" min="10" max="50" required>
+
+            <label for="video-duration">Duration of Each Video (in seconds):</label>
+            <input type="number" id="video-duration" name="video-duration" min="1" required>
+
+            <label for="email">Email Address:</label>
+            <input type="email" id="email" name="email" required>
+
+            <input type="submit" value="Submit">
+
+            <button type="button" onclick="toggleLogs()">Logs</button>
+        </form>
+
+        <div id="logs" class="logs"></div>
+    </div>
+</body>
+</html>
