@@ -12,6 +12,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from moviepy.editor import VideoFileClip
 from pydub import AudioSegment
 
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
 # Function to search YouTube Music links
 def search_youtube_music_links(query, max_results):
     ydl_opts = {
