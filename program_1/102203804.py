@@ -72,10 +72,10 @@ def download_single_video(url, index, download_path):
         if downloaded_files:
             return os.path.join(download_path, downloaded_files[0])
         else:
-            print(f"Downloaded video file not found for {url}")
+            logging.error(f"Downloaded video file not found for {url}")
             return None
     except Exception as e:
-        print(f"Error downloading video: {e}")
+        logging.error(f"Error downloading video: {e}")
         return None
 
 def download_all_videos(video_urls, download_path):
@@ -92,7 +92,7 @@ def download_all_videos(video_urls, download_path):
                 if video_file:
                     downloaded_files.append(video_file)
             except Exception as e:
-                print(f"Error occurred: {e}")
+                logging.error(f"Error occurred: {e}")
 
     return downloaded_files
 
@@ -110,14 +110,15 @@ def convert_all_videos_to_audio(video_files, audio_folder):
             audio_file = os.path.join(audio_folder, f'song_{index}.mp3')
             video.audio.write_audiofile(audio_file, codec='mp3', bitrate='192k', ffmpeg_params=["-loglevel", "quiet"])
             video.close()
-            print(f"Converted {video_file} to {audio_file}")
+            logging.info(f"Converted {video_file} to {audio_file}")
         except Exception as e:
-            print(f"Error converting {video_file} to audio: {e}")
+            logging.error(f"Error converting {video_file} to audio: {e}")
+
 
 def download_audio_from_links(links_folder, file_name):
     file_path = os.path.join(links_folder, file_name)
     if not os.path.exists(file_path):
-        print("Error: Links file does not exist.")
+        logging.error("Links file does not exist.")
         return
 
     with open(file_path, 'r') as file:
@@ -132,13 +133,13 @@ def download_audio_from_links(links_folder, file_name):
     downloaded_videos = download_all_videos([link.strip() for link in links if link.strip()], video_folder)
 
     if downloaded_videos:
-        print(f"Downloaded {len(downloaded_videos)} video files to {video_folder}.")
+        logging.info(f"Downloaded {len(downloaded_videos)} video files to {video_folder}.")
         
         audio_folder = os.path.join(os.getcwd(), "3.audios")
         convert_all_videos_to_audio(downloaded_videos, audio_folder)
 
     else:
-        print("No video files were downloaded.")
+        logging.error("No video files were downloaded.")
 
 def create_mashup(input_dir, output_file, duration):
     mashup = AudioSegment.silent(duration=0)
@@ -154,13 +155,13 @@ def create_mashup(input_dir, output_file, duration):
                 audio += AudioSegment.silent(duration=(duration * 1000) - len(audio))
             
             mashup += audio
-            print(f'Added {filename} to the mashup')
+            logging.info(f'Added {filename} to the mashup')
     
     mashup_path = os.path.join(os.getcwd(), "4.mashup", output_file)
     if os.path.exists(mashup_path):
         os.remove(mashup_path)  # Delete the existing mashup file if it exists
     mashup.export(mashup_path, format='mp3')
-    print(f'Mashup saved as {mashup_path}')
+    logging.info(f'Mashup saved as {mashup_path}')
 
 # Main function
 def main():
