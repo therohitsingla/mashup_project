@@ -232,6 +232,10 @@ def create_mashup_process(singer_name, number_of_videos, duration, email, max_vi
         logging.error(f"Error in create_mashup_process: {str(e)}")
         return False, "An error occurred during the process."
 
+@app.route('/')
+   def index():
+       return render_template('index.html')
+
 @app.route('/mashup', methods=['POST'])
 def mashup():
     try:
