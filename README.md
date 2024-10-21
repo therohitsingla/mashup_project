@@ -2,7 +2,7 @@ _**Mashup Creator**_
 
 **Program_1**
 
-Use this format to use 102203804.py file in vs code terminal
+Use _this format_ to use 102203804.py file in VS code terminal
 
 # python 102203804.py "<singer_name>" <Number_of_videos> <Audio_Duration> <Output_FileName.mp3>
 # eg-> python 102203804.py "sharry maan" 12 35 final_mashup.mp3
