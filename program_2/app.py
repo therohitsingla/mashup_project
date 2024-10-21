@@ -21,26 +21,30 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Function to search YouTube Music links using the YouTube Data API
 def search_youtube_music_links(query, max_results):
+    logging.info(f"Searching YouTube Music links for query: {query} with max results: {max_results}")
     api_key = os.getenv('YOUTUBE_API_KEY')  # Get API key from environment variable
     search_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q={query}&maxResults={max_results}&key={api_key}"
-    
+
     try:
         response = requests.get(search_url)
         response.raise_for_status()  # Raise an error for bad responses
-
+        logging.info("Successfully retrieved YouTube links.")
+        
         items = response.json().get('items', [])
         links = [f"https://www.youtube.com/watch?v={item['id']['videoId']}" for item in items]
-        
+        logging.debug(f"Found links: {links}")
+
         return links
     except requests.RequestException as e:
         logging.error(f"Error searching YouTube Music links: {e}")
         return []
 
 def download_single_video(url, index, download_path, max_duration=600, min_duration=60):
+    logging.info(f"Attempting to download video {index}: {url}")
     ydl_opts = {
         'format': 'bestvideo[height<=480]+bestaudio/best',
         'outtmpl': os.path.join(download_path, f'video_{index}.%(ext)s'),
@@ -53,9 +57,10 @@ def download_single_video(url, index, download_path, max_duration=600, min_durat
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            
+
             # Check video duration
             duration = info.get('duration', 0)
+            logging.debug(f"Video duration for {url}: {duration} seconds")
             if duration > max_duration:
                 logging.info(f"Skipping {url}: Video longer than {max_duration} seconds")
                 return None
@@ -65,8 +70,9 @@ def download_single_video(url, index, download_path, max_duration=600, min_durat
 
             # Download the video if duration is valid
             filename = ydl.prepare_filename(info)
+            logging.info(f"Downloading video to {filename}")
             ydl.download([url])
-        
+
         if os.path.exists(filename):
             logging.info(f"Successfully downloaded: {filename}")
             return filename
@@ -74,16 +80,14 @@ def download_single_video(url, index, download_path, max_duration=600, min_durat
             logging.error(f"File not found after download: {filename}")
             return None
     except yt_dlp.utils.DownloadError as e:
-        if "This video is either too long or too short" in str(e):
-            logging.info(f"Skipped {url}: Video duration does not meet criteria")
-        else:
-            logging.error(f"Error downloading video {url}: {str(e)}")
+        logging.error(f"Error downloading video {url}: {str(e)}")
         return None
     except Exception as e:
         logging.error(f"Unexpected error downloading video {url}: {str(e)}")
         return None
 
 def download_all_videos(video_urls, download_path, number_of_videos, max_duration=600):
+    logging.info(f"Starting download for {len(video_urls)} videos with max duration {max_duration}")
     downloaded_files = []
     with ThreadPoolExecutor() as executor:
         futures = {
@@ -96,9 +100,11 @@ def download_all_videos(video_urls, download_path, number_of_videos, max_duratio
                 video_file = future.result()
                 if video_file:
                     downloaded_files.append(video_file)
+                    logging.info(f"Downloaded {len(downloaded_files)} files.")
 
                     # Stop downloading when we've reached the required number of videos
                     if len(downloaded_files) == number_of_videos:
+                        logging.info("Reached the desired number of videos.")
                         break
             except Exception as e:
                 logging.error(f"Error occurred: {e}")
@@ -111,9 +117,11 @@ def download_all_videos(video_urls, download_path, number_of_videos, max_duratio
 
 def convert_all_videos_to_audio(video_files, audio_folder):
     os.makedirs(audio_folder, exist_ok=True)
+    logging.info(f"Converting {len(video_files)} videos to audio.")
 
     for index, video_file in enumerate(video_files, start=1):
         try:
+            logging.info(f"Converting {video_file} to audio.")
             video = VideoFileClip(video_file)
             audio_file = os.path.join(audio_folder, f'song_{index}.mp3')
             video.audio.write_audiofile(audio_file, codec='mp3', bitrate='192k', ffmpeg_params=["-loglevel", "quiet"])
@@ -124,12 +132,13 @@ def convert_all_videos_to_audio(video_files, audio_folder):
 
 def create_mashup(input_dir, output_file, duration):
     mashup = AudioSegment.silent(duration=0)
-    
+    logging.info(f"Creating mashup from files in {input_dir} with duration {duration} seconds.")
+
     for filename in os.listdir(input_dir):
         if filename.endswith('.mp3') or filename.endswith('.wav') or filename.endswith('.ogg'):
             audio_path = os.path.join(input_dir, filename)
             audio = AudioSegment.from_file(audio_path)
-            
+
             if len(audio) > duration * 1000:  # Convert seconds to milliseconds
                 audio = audio[:duration * 1000]
             else:
@@ -143,7 +152,7 @@ def create_mashup(input_dir, output_file, duration):
     logging.info(f'Mashup saved as {output_file}')
 
 def create_zip(file_path, zip_name):
-    app.logger.info(f"Creating zip for file: {file_path}")
+    logging.info(f"Creating zip for file: {file_path}")
     
     zip_buffer = io.BytesIO()
     
@@ -152,16 +161,16 @@ def create_zip(file_path, zip_name):
 
     zip_buffer.seek(0)
     
-    app.logger.info(f"Zip file created: {zip_name}, size: {len(zip_buffer.getvalue())} bytes")
+    logging.info(f"Zip file created: {zip_name}, size: {len(zip_buffer.getvalue())} bytes")
     return zip_buffer.getvalue()
 
 def send_email(email, zip_data, file_name):
-    app.logger.info(f"Sending email to: {email}")
+    logging.info(f"Sending email to: {email}")
     sender_email = os.getenv('SENDER_EMAIL')
     sender_password = os.getenv('SENDER_PASSWORD')
 
     if not sender_email or not sender_password:
-        app.logger.error("Sender email or password not set in environment variables.")
+        logging.error("Sender email or password not set in environment variables.")
         return False
 
     msg = MIMEMultipart()
@@ -173,7 +182,7 @@ def send_email(email, zip_data, file_name):
     msg.attach(MIMEText(body, 'plain'))
 
     if zip_data is None or len(zip_data) == 0:
-        app.logger.error("No zip data to attach to email.")
+        logging.error("No zip data to attach to email.")
         return False
 
     try:
@@ -191,17 +200,19 @@ def send_email(email, zip_data, file_name):
             server.login(sender_email, sender_password)
             server.send_message(msg)
         
-        app.logger.info("Email sent successfully")
+        logging.info("Email sent successfully")
         return True
     except Exception as e:
-        app.logger.error(f"Error sending email: {e}")
+        logging.error(f"Error sending email: {e}")
         return False
 
 def create_mashup_process(singer_name, number_of_videos, duration, email, max_video_duration=600):
     try:
+        logging.info(f"Starting mashup creation process for {singer_name} with {number_of_videos} videos.")
         links = search_youtube_music_links(f"{singer_name} official new video song", number_of_videos)
         
         if not links:
+            logging.error("No links found for the query.")
             return False, "No links found for the query."
 
         video_folder = '/tmp/videos'
@@ -210,53 +221,44 @@ def create_mashup_process(singer_name, number_of_videos, duration, email, max_vi
         os.makedirs(audio_folder, exist_ok=True)
 
         downloaded_videos = download_all_videos(links, video_folder, number_of_videos, max_video_duration)
-        
+
         if not downloaded_videos:
-            return False, "No videos were downloaded."
+            logging.error("No videos downloaded successfully.")
+            return False, "No videos downloaded successfully."
 
         convert_all_videos_to_audio(downloaded_videos, audio_folder)
 
-        output_filename = f"{singer_name.replace(' ', '_')}_mashup.mp3"
-        output_filepath = os.path.join('/tmp/mashups', output_filename)
-        create_mashup(audio_folder, output_filepath, duration)
+        mashup_file_path = os.path.join('/tmp/mashup', 'mashup.mp3')
+        create_mashup(audio_folder, mashup_file_path, duration)
 
-        # Create zip file
-        zip_data = create_zip(output_filepath, singer_name)
-        email_sent = send_email(email, zip_data, singer_name)
+        zip_data = create_zip(mashup_file_path, 'mashup')
+        email_sent = send_email(email, zip_data, 'mashup')
 
-        if email_sent:
-            return True, "Mashup created and sent successfully."
-        else:
-            return False, "Failed to send email."
+        return email_sent, "Email sent successfully!" if email_sent else "Failed to send email."
     except Exception as e:
-        logging.error(f"Error in create_mashup_process: {str(e)}")
-        return False, "An error occurred during the process."
-
-@app.route('/')
-def index():
-   return render_template('index.html')
+        logging.error(f"Error in mashup creation process: {e}")
+        return False, str(e)
 
 @app.route('/mashup', methods=['POST'])
-def mashup():
-    try:
-        data = request.get_json()
-        singer_name = data.get('singer_name')
-        number_of_videos = data.get('number_of_videos')
-        duration = data.get('duration')
-        email = data.get('email')
+def mashup_endpoint():
+    singer_name = request.json.get('singer_name')
+    number_of_videos = request.json.get('number_of_videos', 10)
+    duration = request.json.get('duration', 60)
+    email = request.json.get('email')
 
-        if not all([singer_name, number_of_videos, duration, email]):
-            return jsonify({"success": False, "message": "All fields are required."}), 400
+    logging.info(f"Received mashup request for singer: {singer_name}, videos: {number_of_videos}, duration: {duration}, email: {email}")
 
-        success, message = create_mashup_process(singer_name, number_of_videos, duration, email)
-        
-        if success:
-            return jsonify({"success": True, "message": message}), 200
-        else:
-            return jsonify({"success": False, "message": message}), 500
-    except Exception as e:
-        logging.error(f"Error in mashup route: {str(e)}")
-        return jsonify({"success": False, "message": "An unexpected error occurred."}), 500
+    if not email or not singer_name:
+        logging.warning("Singer name or email is missing.")
+        return jsonify({"error": "Singer name and email are required."}), 400
+
+    success, message = create_mashup_process(singer_name, number_of_videos, duration, email)
+
+    if not success:
+        logging.error(f"Mashup creation failed: {message}")
+        return jsonify({"error": message}), 500
+
+    return jsonify({"message": message}), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
