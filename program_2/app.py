@@ -14,6 +14,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from dotenv import load_dotenv
+import requests  # Import requests to make API calls
 
 load_dotenv()
 
@@ -22,28 +23,22 @@ app = Flask(__name__)
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Function to search YouTube Music links
-def search_youtube_music_links(query, max_results, extra_links=10):
-    ydl_opts = {
-        'quiet': True,
-        'no_warnings': True,
-        'force_generic_extractor': True,
-    }
+# Function to search YouTube Music links using the YouTube Data API
+def search_youtube_music_links(query, max_results):
+    api_key = os.getenv('YOUTUBE_API_KEY')  # Get API key from environment variable
+    search_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q={query}&maxResults={max_results}&key={api_key}"
+    
+    try:
+        response = requests.get(search_url)
+        response.raise_for_status()  # Raise an error for bad responses
 
-    total_results = max_results + extra_links  # Fetch more links than needed
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        search_url = f"ytsearch{total_results}:{query}"
-        result = ydl.extract_info(search_url, download=False)
-
-    links = []
-    for entry in result['entries']:
-        try:
-            link = f"https://www.youtube.com/watch?v={entry['id']}"
-            links.append(link)
-        except yt_dlp.utils.DownloadError as e:
-            logging.error(f"Skipping {entry['title']}: {e}")
-
-    return links
+        items = response.json().get('items', [])
+        links = [f"https://www.youtube.com/watch?v={item['id']['videoId']}" for item in items]
+        
+        return links
+    except requests.RequestException as e:
+        logging.error(f"Error searching YouTube Music links: {e}")
+        return []
 
 def download_single_video(url, index, download_path, max_duration=600, min_duration=60):
     ydl_opts = {
@@ -222,79 +217,38 @@ def create_mashup_process(singer_name, number_of_videos, duration, email, max_vi
         convert_all_videos_to_audio(downloaded_videos, audio_folder)
 
         output_filename = f"{singer_name.replace(' ', '_')}_mashup.mp3"
-        output_path = os.path.join('/tmp', output_filename)
-        
-        create_mashup(audio_folder, output_path, duration)
+        output_filepath = os.path.join('/tmp/mashups', output_filename)
+        create_mashup(audio_folder, output_filepath, duration)
 
         # Create zip file
-        zip_data = create_zip(output_path, output_filename)
+        zip_data = create_zip(output_filepath, singer_name)
+        email_sent = send_email(email, zip_data, singer_name)
 
-        # Send email with zip attachment
-        if send_email(email, zip_data, output_filename):
-            app.logger.info(f"Mashup sent to {email}: {output_filename}")
+        if email_sent:
+            return True, "Mashup created and sent successfully."
         else:
-            app.logger.error(f"Failed to send mashup to {email}")
-
-        # Clean up
-        for folder in [video_folder, audio_folder]:
-            for file in os.listdir(folder):
-                os.remove(os.path.join(folder, file))
-        os.remove(output_path)
-
-        return True, f"Mashup created and sent to {email}"
+            return False, "Failed to send email."
     except Exception as e:
-        app.logger.error(f"Error in mashup process: {e}")
-        return False, str(e)
+        logging.error(f"Error in create_mashup_process: {str(e)}")
+        return False, "An error occurred during the process."
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+@app.route('/mashup', methods=['POST'])
+def mashup():
+    data = request.get_json()
+    singer_name = data.get('singer_name')
+    number_of_videos = data.get('number_of_videos')
+    duration = data.get('duration')
+    email = data.get('email')
 
-@app.route('/static/<path:path>')
-def send_static(path):
-    return send_from_directory('static', path)
+    if not all([singer_name, number_of_videos, duration, email]):
+        return jsonify({"success": False, "message": "All fields are required."}), 400
 
-@app.route('/create_mashup', methods=['POST'])
-def create_mashup_endpoint():
-    try:
-        singer_name = request.form.get('singer-name', '')
-        number_of_videos = request.form.get('num-videos', '')
-        duration = request.form.get('video-duration', '')
-        email = request.form.get('email', '')
-        
-        logging.info(f"Received request: singer_name={singer_name}, number_of_videos={number_of_videos}, duration={duration}, email={email}")
-        
-        if not all([singer_name, number_of_videos, duration, email]):
-            return jsonify({'status': 'error', 'message': 'All fields are required'})
-        
-        try:
-            number_of_videos = int(number_of_videos)
-            duration = int(duration)
-        except ValueError:
-            return jsonify({'status': 'error', 'message': 'Number of videos and duration must be integers'})
-        
-        if not (10 <= number_of_videos <= 50):
-            return jsonify({'status': 'error', 'message': 'Number of videos must be between 10 and 50'})
-        
-        if not (1 <= duration <= 500):
-            return jsonify({'status': 'error', 'message': 'Duration must be between 1 and 500 seconds'})
-        
-        success, message = create_mashup_process(singer_name, number_of_videos, duration, email)
-        
-        if success:
-            return jsonify({
-                'status': 'success',
-                'message': 'Mashup creation process completed. You will receive an email with the mashup soon.'
-            })
-        else:
-            return jsonify({'status': 'error', 'message': message})
-    except Exception as e:
-        logging.error(f"Unexpected error in create_mashup_endpoint: {e}")
-        return jsonify({'status': 'error', 'message': f'An unexpected error occurred: {str(e)}'})
+    success, message = create_mashup_process(singer_name, number_of_videos, duration, email)
+    
+    if success:
+        return jsonify({"success": True, "message": message}), 200
+    else:
+        return jsonify({"success": False, "message": message}), 500
 
-if __name__ == "__main__":
-    # For local development
+if __name__ == '__main__':
     app.run(debug=True)
-else:
-    # For Vercel deployment
-    app.debug = False
