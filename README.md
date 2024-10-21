@@ -14,4 +14,4 @@ Use localhost_app.py to use the website locally through vs code terminal
 
 otherwise use vercel link (certain memory and time limits)
 
-link:- **https://mashup-project-owcce4hrz-therohitsinglas-projects.vercel.app/**
+link:- **https://mashup-project-izqtmfsb9-therohitsinglas-projects.vercel.app**
