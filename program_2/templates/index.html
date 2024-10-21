@@ -21,7 +21,7 @@
 <body>
     <div class="container">
         <h1>Create Mashup File</h1>
-        <form>
+        <form action="/create_mashup" method="post">
             <label for="singer-name">Singer Name:</label>
             <input type="text" id="singer-name" name="singer-name" required>
 
@@ -39,12 +39,11 @@
             <button type="button" onclick="toggleLogs()">Logs</button>
         </form>
 
-        {% if mashup_filename %}
-        <h2>Mashup created successfully!</h2>
-        <a href="{{ url_for('download_file', filename=mashup_filename) }}">Download your mashup</a>
+        {% if message %}
+        <div class="message">{{ message }}</div>
         {% endif %}
         
-        <div id="logs" class="logs"></div>
+        <div id="logs" class="logs" style="display: none;"></div>
     </div>
 </body>
 </html>
