@@ -23,6 +23,18 @@ app = Flask(__name__)
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+# Set a random User-Agent header
+import random
+user_agents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.3',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.90 Safari/537.3',
+    # Add more User-Agent headers here
+]
+
+def get_random_user_agent():
+    return random.choice(user_agents)
+
 # Function to search YouTube Music links using the YouTube Data API
 def search_youtube_music_links(query, max_results):
     logging.info(f"Searching YouTube Music links for query: {query} with max results: {max_results}")
@@ -30,7 +42,7 @@ def search_youtube_music_links(query, max_results):
     search_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q={query}&maxResults={max_results}&key={api_key}"
 
     try:
-        response = requests.get(search_url)
+        response = requests.get(search_url, headers={'User-Agent': get_random_user_agent()})
         response.raise_for_status()
         logging.info("Successfully retrieved YouTube links.")
         items = response.json().get('items', [])
