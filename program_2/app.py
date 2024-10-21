@@ -234,21 +234,25 @@ def create_mashup_process(singer_name, number_of_videos, duration, email, max_vi
 
 @app.route('/mashup', methods=['POST'])
 def mashup():
-    data = request.get_json()
-    singer_name = data.get('singer_name')
-    number_of_videos = data.get('number_of_videos')
-    duration = data.get('duration')
-    email = data.get('email')
+    try:
+        data = request.get_json()
+        singer_name = data.get('singer_name')
+        number_of_videos = data.get('number_of_videos')
+        duration = data.get('duration')
+        email = data.get('email')
 
-    if not all([singer_name, number_of_videos, duration, email]):
-        return jsonify({"success": False, "message": "All fields are required."}), 400
+        if not all([singer_name, number_of_videos, duration, email]):
+            return jsonify({"success": False, "message": "All fields are required."}), 400
 
-    success, message = create_mashup_process(singer_name, number_of_videos, duration, email)
-    
-    if success:
-        return jsonify({"success": True, "message": message}), 200
-    else:
-        return jsonify({"success": False, "message": message}), 500
+        success, message = create_mashup_process(singer_name, number_of_videos, duration, email)
+        
+        if success:
+            return jsonify({"success": True, "message": message}), 200
+        else:
+            return jsonify({"success": False, "message": message}), 500
+    except Exception as e:
+        logging.error(f"Error in mashup route: {str(e)}")
+        return jsonify({"success": False, "message": "An unexpected error occurred."}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
