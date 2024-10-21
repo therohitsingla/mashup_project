@@ -1,2 +1,5 @@
-Flask==3.0.0
-yt-dlp==2024.10.07
+Flask==2.0.1
+yt-dlp==2023.3.4
+moviepy==1.0.3
+pydub==0.25.1
+python-dotenv==0.19.1
